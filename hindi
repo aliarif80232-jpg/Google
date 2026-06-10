@@ -1,0 +1,22 @@
+# Add this import at top
+from transliterate import translit
+
+def translate_to_hinglish(text, chunk_size=5000):
+    translator = Translator()
+    translated_chunks = []
+    for i in range(0, len(text), chunk_size):
+        chunk = text[i:i+chunk_size]
+        if chunk.strip():
+            try:
+                # Translate English to Hindi (Devanagari)
+                hindi_text = translator.translate(chunk, src='en', dest='hi').text
+                # Convert Devanagari to Roman (Hinglish)
+                hinglish_text = translit(hindi_text, 'hi', reversed=True)
+                translated_chunks.append(hinglish_text)
+            except Exception as e:
+                print(f"Translation error: {e}")
+                translated_chunks.append(chunk)
+    return ' '.join(translated_chunks)
+
+# Andar upload route mein call karo:
+translated_text = translate_to_hinglish(extracted_text)
