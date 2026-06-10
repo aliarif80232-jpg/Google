@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Hinglish Translator | English to Hindi Translation Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h2>📄 PDF to Hinglish Translator</h2>
+                        <p class="mb-0">Upload your English PDF and get Hinglish translation instantly!</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="alert alert-info">
+                                <strong>✨ Kaise kaam karta hai:</strong> English PDF upload karo, aur hum isko Hindi mein translate kar denge. 
+                                Tech support, documentation, aur educational material ke liye perfect!
+                            </div>
+                        </div>
+                        
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="mb-4">
+                                <label for="pdfFile" class="form-label">📁 Apni PDF file choose karo:</label>
+                                <input type="file" class="form-control" id="pdfFile" name="file" accept=".pdf" required>
+                                <div class="form-text">Only PDF files allowed. Max size: 50MB</div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    🚀 Translate Now
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="loading" id="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Translation in progress... Please wait ⏳</p>
+                        </div>
+                        
+                        <div id="result" style="display: none;">
+                            <hr>
+                            <h4>✅ Translation Complete!</h4>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5>📝 Original Text Preview:</h5>
+                                    <div class="result-box" id="originalText"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h5>🇮🇳 Hinglish Translation:</h5>
+                                    <div class="result-box" id="translatedText"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mt-3">
+                                <a href="#" id="downloadLink" class="btn btn-success btn-lg">
+                                    💾 Download Translated Text
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div id="error" class="alert alert-danger mt-3" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
