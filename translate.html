@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+PDF to Hinglish Translator - Single File Version
+Run this file, and everything will be set up automatically.
+"""
+
+import os
+import sys
+import subprocess
+import tempfile
+import PyPDF2
+import pdfplumber
+from flask import Flask, request, render_template, send_file, jsonify
+from werkzeug.utils import secure_filename
+from googletrans import Translator
+
+# ==================== CONFIGURATION ====================
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
+ALLOWED_EXTENSIONS = {'pdf'}
+
+# Create necessary folders
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs('templates', exist_ok=True)
+
+# ==================== CREATE index.html ====================
+HTML_TEMPLATE = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Hinglish Translator | English to Hindi Translation Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 20px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .result-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h2>📄 PDF to Hinglish Translator</h2>
+                        <p class="mb-0">Upload your English PDF and get Hinglish translation instantly!</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="alert alert-info">
+                                <strong>✨ Kaise kaam karta hai:</strong> English PDF upload karo, aur hum isko Hindi mein translate kar denge. 
+                                Tech support, documentation, aur educational material ke liye perfect!
+                            </div>
+                        </div>
+                        
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="mb-4">
+                                <label for="pdfFile" class="form-label">📁 Apni PDF file choose karo:</label>
+                                <input type="file" class="form-control" id="pdfFile" name="file" accept=".pdf" required>
+                                <div class="form-text">Only PDF files allowed. Max size: 50MB</div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    🚀 Translate Now
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="loading" id="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Translation in progress... Please wait ⏳</p>
+                        </div>
+                        
+                        <div id="result" style="display: none;">
+                            <hr>
+                            <h4>✅ Translation Complete!</h4>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5>📝 Original Text Preview:</h5>
+                                    <div class="result-box" id="originalText"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h5>🇮🇳 Hinglish Translation:</h5>
+                                    <div class="result-box" id="translatedText"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mt-3">
+                                <a href="#" id="downloadLink" class="btn btn-success btn-lg">
+                                    💾 Download Translated Text
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div id="error" class="alert alert-danger mt-3" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('pdfFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showError('Please select a PDF file!');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('originalText').innerHTML = data.original_text_preview;
+                    document.getElementById('translatedText').innerHTML = data.translated_text.replace(/\\n/g, '<br>');
+                    document.getElementById('downloadLink').href = data.download_link;
+                    document.getElementById('result').style.display = 'block';
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.innerHTML = message;
+            errorDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
+'''
+
+# Write index.html if not exists
+index_path = os.path.join('templates', 'index.html')
+if not os.path.exists(index_path):
+    with open(index_path, 'w', encoding='utf-8') as f:
+        f.write(HTML_TEMPLATE)
+    print("✅ Created templates/index.html")
+
+# ==================== HELPER FUNCTIONS ====================
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    try:
+        with open(pdf_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+    except Exception as e:
+        print(f"PyPDF2 error: {e}, trying pdfplumber...")
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+        except Exception as e2:
+            raise Exception(f"PDF extraction failed: {e2}")
+    
+    if not text.strip():
+        raise Exception("No text found in PDF - yeh scanned PDF ho sakta hai?")
+    return text
+
+def translate_to_hindi(text, chunk_size=5000):
+    translator = Translator()
+    translated_chunks = []
+    for i in range(0, len(text), chunk_size):
+        chunk = text[i:i+chunk_size]
+        if chunk.strip():
+            try:
+                translated = translator.translate(chunk, src='en', dest='hi')
+                translated_chunks.append(translated.text)
+            except Exception as e:
+                print(f"Translation error for chunk {i}: {e}")
+                translated_chunks.append(chunk)
+    return ' '.join(translated_chunks)
+
+# ==================== FLASK ROUTES ====================
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Only PDF files are allowed'}), 400
+    
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
+    
+    try:
+        extracted_text = extract_text_from_pdf(filepath)
+        translated_text = translate_to_hindi(extracted_text)
+        
+        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8')
+        temp_file.write(translated_text)
+        temp_file.close()
+        
+        os.remove(filepath)
+        
+        return jsonify({
+            'success': True,
+            'original_text_preview': extracted_text[:500] + "..." if len(extracted_text) > 500 else extracted_text,
+            'translated_text': translated_text,
+            'download_link': f'/download/{os.path.basename(temp_file.name)}'
+        })
+    except Exception as e:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/download/<filename>')
+def download_file(filename):
+    temp_dir = tempfile.gettempdir()
+    filepath = os.path.join(temp_dir, filename)
+    if os.path.exists(filepath):
+        return send_file(filepath, as_attachment=True, download_name='translated_text.txt')
+    else:
+        return jsonify({'error': 'File not found'}), 404
+
+# ==================== MAIN ====================
+if __name__ == '__main__':
+    # Check if required packages are installed, else guide user
+    required_packages = ['Flask', 'PyPDF2', 'pdfplumber', 'googletrans==4.0.0-rc1', 'Werkzeug']
+    missing = []
+    for pkg in required_packages:
+        pkg_name = pkg.split('==')[0]
+        try:
+            __import__(pkg_name)
+        except ImportError:
+            missing.append(pkg)
+    
+    if missing:
+        print("\n⚠️  Some required packages are missing. Please install them using:")
+        print(f"pip install {' '.join(missing)}")
+        print("\nThen run this script again.\n")
+        sys.exit(1)
+    
+    print("\n🚀 PDF to Hinglish Translator is starting...")
+    print("📂 Open your browser and go to: http://localhost:5000")
+    print("🔧 Press CTRL+C to stop the server\n")
+    app.run(debug=True, host='0.0.0.0', port=5000)
