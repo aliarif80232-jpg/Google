@@ -25,8 +25,8 @@ async function translateToHinglish(file, onSuccess, onError) {
         if (!extractedText.trim()) {
             throw new Error("File mein koi readable text nahi mila.");
         }
-        const hindiText = await translateToHindi(extractedText);
-        const hinglishText = devanagariToRoman(hindiText);
+        const hindiText = extractedText;
+const hinglishText = devanagariToRoman(hindiText);
         if (onSuccess) onSuccess(hinglishText, extractedText);
     } catch (err) {
         if (onError) onError("Translation failed: " + err.message);
