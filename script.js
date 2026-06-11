@@ -2,11 +2,13 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
 // ----- Main translation function (client-side) -----
-async function translateToHinglish(file, onSuccess, onError) {
-    if (!file) {
-        if (onError) onError("Koi file select karo!");
-        return;
-    }
+async function extractTextFromImage(file) {
+    const { data: { text } } = await Tesseract.recognize(
+        file,
+        'eng'
+    );
+    return text;
+}
     const fileType = file.type;
     const isPDF = fileType === 'application/pdf';
     const isImage = fileType.startsWith('image/');
