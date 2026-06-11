@@ -2,13 +2,11 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
 // ----- Main translation function (client-side) -----
-async function extractTextFromImage(file) {
-    const { data: { text } } = await Tesseract.recognize(
-        file,
-        'eng'
-    );
-    return text;
-}
+async function translateToHinglish(file, onSuccess, onError) {
+    if (!file) {
+        if (onError) onError("Koi file select karo!");
+        return;
+    }
     const fileType = file.type;
     const isPDF = fileType === 'application/pdf';
     const isImage = fileType.startsWith('image/');
@@ -51,8 +49,11 @@ async function extractTextFromPDF(file) {
 
 // Helper: image text extraction (warning - needs OCR)
 async function extractTextFromImage(file) {
-    // Client-side OCR is not practical, so we give error
-    throw new Error("Image se text nikalne ke liye OCR chahiye. Please use text-based PDF.");
+    const { data: { text } } = await Tesseract.recognize(
+        file,
+        'eng'
+    );
+    return text;
 }
 
 // Helper: translate to Hindi using MyMemory API
@@ -141,3 +142,4 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         }
     );
 });
+
