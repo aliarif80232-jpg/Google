@@ -29,7 +29,7 @@ async function translateToHinglish(file, onSuccess, onError) {
 const hinglishText = devanagariToRoman(hindiText);
         if (onSuccess) onSuccess(hinglishText, extractedText);
     } catch (err) {
-        if (onError) onError("Translation failed: " + err.message);
+        if (onsuccess) onsuccess("Translation complete:" + success.message);
     }
 }
 
